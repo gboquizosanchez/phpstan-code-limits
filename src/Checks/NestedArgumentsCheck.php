@@ -7,11 +7,15 @@ namespace Boquizo\PHPStanCodeLimits\Checks;
 use LogicException;
 use Override;
 use PhpParser\Node;
+use PhpParser\Node\ArrayItem;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\FunctionLike;
+use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
@@ -35,6 +39,12 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
  * The enclosing statement is the nearest statement node, collapsed to one
  * line; a compound statement (`if`, `foreach`...) is therefore usually longer
  * than 80 characters.
+ *
+ * Exception: an array item that is a builder chain rooted in static
+ * `::make()` call (Filament schemas, columns, filters, actions) is a
+ * declaration, not a nested call: `components([Section::make(__('x'))
+ * ->schema([...])])` counts zero levels for the outer call. Each chain is
+ * still checked on its own, so its own arguments keep the limit.
  */
 final readonly class NestedArgumentsCheck implements Check
 {
@@ -125,8 +135,10 @@ final readonly class NestedArgumentsCheck implements Check
     {
         $isFirstClassCallable = $node instanceof CallLike
             && $node->isFirstClassCallable();
+        $isBuilderItem = $node instanceof ArrayItem
+            && $this->isBuilderChain($node->value);
 
-        if ($node instanceof FunctionLike || $isFirstClassCallable) {
+        if ($node instanceof FunctionLike || $isFirstClassCallable || $isBuilderItem) {
             return 0;
         }
 
@@ -169,6 +181,19 @@ final readonly class NestedArgumentsCheck implements Check
         }
 
         return max($receiver, $own + $this->argumentLevels($call));
+    }
+
+    private function isBuilderChain(Expr $expression): bool
+    {
+        while ($expression instanceof MethodCall
+            || $expression instanceof NullsafeMethodCall
+        ) {
+            $expression = $expression->var;
+        }
+
+        return $expression instanceof StaticCall
+            && $expression->name instanceof Identifier
+            && $expression->name->toLowerString() === 'make';
     }
 
     private function isTransparent(CallLike $call): bool

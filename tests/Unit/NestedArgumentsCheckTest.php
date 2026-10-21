@@ -159,3 +159,28 @@ test('calls without arguments and plain code are clean', function (): void {
 
     expect(nestedViolations($code))->toBe([]);
 });
+
+test('builder chains rooted in make() inside an array argument are declarations, not levels', function (): void {
+    $code = <<<'PHP'
+        $schemaWithAVeryLongNameThatPushesTheStatementBeyondEighty = $schema->components([
+            Section::make(__('resources/purchase.sections.data'))
+                ->schema([
+                    TextEntry::make('invoice_number')->label(__('resources/purchase.fields.invoice_number')),
+                ]),
+        ]);
+        PHP;
+
+    expect(nestedViolations($code))->toBe([]);
+});
+
+test('a builder chain still answers for its own arguments', function (): void {
+    $code = '$aVariableNameThatIsLongEnoughToPushEveryStatementBeyondEightyCharacters = $schema->components([TextEntry::make(inner(deep($a)))]);';
+
+    expect(nestedViolations($code))->toHaveCount(1);
+});
+
+test('an array item that is not a make() chain still counts', function (): void {
+    $code = '$aVariableNameThatIsLongEnoughToPushEveryStatementBeyondEightyCharacters = outer([Section::build(inner($a))]);';
+
+    expect(nestedViolations($code))->toHaveCount(1);
+});
