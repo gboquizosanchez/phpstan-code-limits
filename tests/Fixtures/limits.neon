@@ -1,0 +1,4 @@
+parameters:
+    codeLimits:
+        maxParameters: 4
+        maxMethods: 2

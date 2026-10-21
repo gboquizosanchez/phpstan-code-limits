@@ -1,0 +1,7 @@
+# Included from the project's phpstan.neon (see `vendor/bin/code-limits-install`),
+# so it loads after tomasvotruba/cognitive-complexity and overrides its defaults.
+parameters:
+    cognitive_complexity:
+        function: 15
+        # No class limit: a threshold this high never fires.
+        class: 2147483647

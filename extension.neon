@@ -1,0 +1,22 @@
+parametersSchema:
+    codeLimits: structure([
+        maxParameters: int()
+        maxReturns: int()
+        maxMethods: int()
+        maxLineLength: int()
+    ])
+
+parameters:
+    codeLimits:
+        maxParameters: 3
+        maxReturns: 3
+        maxMethods: 20
+        maxLineLength: 80
+
+services:
+    -
+        class: Boquizo\PHPStanCodeLimits\CodeLimitsRule
+        arguments:
+            limits: %codeLimits%
+        tags:
+            - phpstan.rules.rule

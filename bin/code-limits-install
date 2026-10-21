@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Boquizo\PHPStanCodeLimits\Installer;
+
+$autoload = $_composer_autoload_path ?? sprintf('%s/../vendor/autoload.php', __DIR__);
+require $autoload;
+
+$added = new Installer((string) getcwd())->install();
+
+foreach ($added as $include) {
+    echo "Added {$include} to phpstan.neon.\n";
+}
+
+if ($added === []) {
+    echo "phpstan.neon already includes the code limits.\n";
+}
