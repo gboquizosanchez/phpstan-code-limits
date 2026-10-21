@@ -1,0 +1,32 @@
+# Ignores of the Laravel presets (laravel.neon, standalone-laravel.neon).
+# Paths use %currentWorkingDirectory% because ignoreErrors paths are relative
+# to this file, so PHPStan has to run from the project root.
+parameters:
+    ignoreErrors:
+        -
+            # Laravel and vendor:publish write config/.
+            identifiers:
+                - codeLimits.params
+                - codeLimits.returns
+                - codeLimits.methods
+                - codeLimits.signature
+                - codeLimits.promotedCtor
+                - codeLimits.throw
+                - codeLimits.matchArm
+                - codeLimits.tuple
+                - codeLimits.foreach
+                - codeLimits.nestedArgs
+                - codeLimits.closureStatic
+                - codeLimits.closureUseOrder
+                - codeLimits.concat
+                - codeLimits.ellipsis
+            paths:
+                - %currentWorkingDirectory%/config/*
+            reportUnmatched: false
+        -
+            # The skeleton builds its paths as __DIR__.'/../...'.
+            identifier: codeLimits.concat
+            paths:
+                - %currentWorkingDirectory%/bootstrap/app.php
+                - %currentWorkingDirectory%/public/index.php
+            reportUnmatched: false

@@ -7,55 +7,56 @@ namespace Boquizo\PHPStanCodeLimits;
 use RuntimeException;
 
 /**
- * Adds the package's configuration files to the `includes` of a project's
- * phpstan.neon. Files already included are left alone, so it can run twice.
+ * Writes the single include line a project's phpstan.neon needs from this
+ * package, replacing the lines older versions wrote. Running it twice changes
+ * nothing.
  *
- * Without phpstan/extension-installer the extensions themselves are added too.
+ * The entry point depends on the project: with phpstan/extension-installer the
+ * extensions are already loaded (including them again fails), and a Laravel
+ * project (one with an `artisan` file) also gets the Laravel ignores.
  */
 final readonly class Installer
 {
     private const string VENDOR = 'vendor/gboquizosanchez/phpstan-code-limits';
+
+    private const string PACKAGE_LINES = '~^[ \t]*-[ \t]*vendor/(?:tomasvotruba/cognitive-complexity/config/extension|gboquizosanchez/phpstan-code-limits/[\w-]+)\.neon[ \t]*\n~m';
 
     public function __construct(
         private string $projectPath,
     ) {}
 
     /**
-     * @return list<string> the include lines added
+     * @return string|null the include line written, null when already there
      */
-    public function install(): array
+    public function install(): ?string
     {
         $config = "{$this->projectPath}/phpstan.neon";
         $neon = $this->read($config);
-        $missing = array_filter(
-            $this->includes(),
-            static fn (string $include): bool => ! str_contains($neon, $include),
-        );
-        $missing = array_values($missing);
+        $entry = sprintf('%s/%s', self::VENDOR, $this->entryFile());
+        $cleaned = preg_replace(self::PACKAGE_LINES, '', $neon) ?? $neon;
+        $updated = $this->withInclude($cleaned, $entry);
 
-        if ($missing !== []) {
-            file_put_contents($config, $this->withIncludes($neon, $missing));
+        if ($updated === $neon) {
+            return null;
         }
 
-        return $missing;
+        file_put_contents($config, $updated);
+
+        return $entry;
     }
 
-    /**
-     * @return list<string>
-     */
-    private function includes(): array
+    private function entryFile(): string
     {
-        $includes = [];
         $installer = "{$this->projectPath}/vendor/phpstan/extension-installer";
+        $standalone = ! is_dir($installer);
+        $laravel = is_file("{$this->projectPath}/artisan");
 
-        if (! is_dir($installer)) {
-            $includes[] = 'vendor/tomasvotruba/cognitive-complexity/config/extension.neon';
-            $includes[] = sprintf('%s/extension.neon', self::VENDOR);
-        }
-
-        $includes[] = sprintf('%s/complexity.neon', self::VENDOR);
-
-        return $includes;
+        return match (true) {
+            $standalone && $laravel => 'standalone-laravel.neon',
+            $standalone => 'standalone.neon',
+            $laravel => 'laravel.neon',
+            default => 'complexity.neon',
+        };
     }
 
     private function read(string $config): string
@@ -73,23 +74,17 @@ final readonly class Installer
         return $neon;
     }
 
-    /**
-     * @param  list<string>  $includes
-     */
-    private function withIncludes(string $neon, array $includes): string
+    private function withInclude(string $neon, string $include): string
     {
-        $lines = implode('', array_map(
-            static fn (string $include): string => "    - {$include}\n",
-            $includes,
-        ));
+        $line = "    - {$include}\n";
         $section = preg_match('/^includes:[ \t]*\n/m', $neon, $match, PREG_OFFSET_CAPTURE);
 
         if ($section !== 1) {
-            return "includes:\n{$lines}\n{$neon}";
+            return "includes:\n{$line}\n{$neon}";
         }
 
         $end = $match[0][1] + mb_strlen($match[0][0], '8bit');
 
-        return substr_replace($neon, $lines, $end, 0);
+        return substr_replace($neon, $line, $end, 0);
     }
 }

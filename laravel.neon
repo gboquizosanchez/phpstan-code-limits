@@ -1,0 +1,4 @@
+# Entry point for Laravel projects with phpstan/extension-installer.
+includes:
+    - complexity.neon
+    - laravel-ignores.neon

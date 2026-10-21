@@ -1,5 +1,5 @@
-# Included from the project's phpstan.neon (see `vendor/bin/code-limits-install`),
-# so it loads after tomasvotruba/cognitive-complexity and overrides its defaults.
+# Entry point for projects with phpstan/extension-installer, which loads
+# tomasvotruba/cognitive-complexity first: these thresholds override its defaults.
 parameters:
     cognitive_complexity:
         function: 15

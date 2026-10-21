@@ -1,0 +1,4 @@
+# Entry point for Laravel projects without phpstan/extension-installer.
+includes:
+    - standalone.neon
+    - laravel-ignores.neon

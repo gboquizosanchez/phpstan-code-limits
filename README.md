@@ -51,7 +51,8 @@ the code fixes it before review.
 - **One identifier per limit**: every error is `codeLimits.<rule>`, so each limit can be ignored on its own.
 - **Configurable numbers**: parameters, returns, methods and line length are PHPStan parameters.
 - **Cognitive complexity included**: ships [`tomasvotruba/cognitive-complexity`](https://github.com/TomasVotruba/cognitive-complexity) with a function limit of 15.
-- **One-command setup**: `code-limits-install` wires everything into your `phpstan.neon`, with or without `phpstan/extension-installer`.
+- **One line of setup**: `code-limits-install` writes a single include into your `phpstan.neon`, with or without `phpstan/extension-installer`.
+- **Laravel preset**: skips `config/` and the skeleton's path concatenations out of the box.
 - **Dev only**: `--dev` dependency, nothing runs in production.
 
 ---
@@ -68,11 +69,33 @@ Then add the configuration to your `phpstan.neon`:
 vendor/bin/code-limits-install
 ```
 
-It adds `complexity.neon` to the `includes`, which sets the cognitive complexity limit. That file has
-to be included by the project because `tomasvotruba/cognitive-complexity` loads its own defaults
-(function 9, class 40) after this extension. Without
-[`phpstan/extension-installer`](https://github.com/phpstan/extension-installer) it also adds both
-extensions. Running it again changes nothing.
+It writes the one line your `phpstan.neon` needs from this package, chosen for your project:
+
+| Project                                          | Included file             |
+|--------------------------------------------------|---------------------------|
+| With `phpstan/extension-installer`               | `complexity.neon`         |
+| With `phpstan/extension-installer`, Laravel      | `laravel.neon`            |
+| Without `phpstan/extension-installer`            | `standalone.neon`         |
+| Without `phpstan/extension-installer`, Laravel   | `standalone-laravel.neon` |
+
+A project is Laravel when it has an `artisan` file. Lines written by older versions are replaced, and
+running it again changes nothing.
+
+The cognitive complexity limit has to come from that line: `tomasvotruba/cognitive-complexity` loads
+its own defaults (function 9, class 40) after this extension, and with
+[`phpstan/extension-installer`](https://github.com/phpstan/extension-installer) the extensions are
+already loaded, so including them again would fail.
+
+### Laravel preset
+
+The Laravel entry points also skip the files the framework writes for you:
+
+- `config/*`: every limit, since Laravel and `vendor:publish` write these files.
+- `bootstrap/app.php` and `public/index.php`: `codeLimits.concat`, for the skeleton's
+  `__DIR__.'/../...'` paths.
+
+Those paths are resolved from the current working directory, so run PHPStan from the project root,
+as `composer test` and IDEs do.
 
 ---
 
@@ -110,7 +133,7 @@ parameters:
         maxMethods: 20
         maxLineLength: 80
     cognitive_complexity:
-        function: 15 # after the complexity.neon include
+        function: 15 # after the code-limits include
 ```
 
 Turn a limit off, everywhere or for some paths, with PHPStan's own `ignoreErrors`:
